@@ -39,6 +39,9 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Net.Json">
+      <HintPath>DLL\System.Net.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -50,15 +53,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DB_ORA.cs">
+    <Compile Include="Class\Setting.cs" />
+    <Compile Include="Forms\DB_ORA.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DB_ORA.Designer.cs">
+    <Compile Include="Forms\DB_ORA.Designer.cs">
       <DependentUpon>DB_ORA.cs</DependentUpon>
     </Compile>
+    <Compile Include="Class\Globals.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="DB_ORA.resx">
+    <EmbeddedResource Include="Forms\DB_ORA.resx">
       <DependentUpon>DB_ORA.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -84,11 +89,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DBManager\LunaStar.csproj">
+    <ProjectReference Include="..\DBManager\DBManager.csproj">
       <Project>{ab79baa0-768b-47e6-ae27-1d21c4195e5d}</Project>
-      <Name>LunaStar</Name>
+      <Name>DBManager</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

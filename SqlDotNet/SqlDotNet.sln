@@ -5,7 +5,9 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlDotNet", "SqlDotNet.csproj", "{AFE72C9F-87CF-4124-93B7-2DDB1FC45445}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LunaStar", "..\DBManager\LunaStar.csproj", "{AB79BAA0-768B-47E6-AE27-1D21C4195E5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DBManager", "..\DBManager\DBManager.csproj", "{AB79BAA0-768B-47E6-AE27-1D21C4195E5D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LunaStar", "..\LunaStar\LunaStar.csproj", "{037BB98D-473D-450F-8410-E46E101F57BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +33,14 @@ Global
 		{AB79BAA0-768B-47E6-AE27-1D21C4195E5D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AB79BAA0-768B-47E6-AE27-1D21C4195E5D}.Release|x86.ActiveCfg = Release|x86
 		{AB79BAA0-768B-47E6-AE27-1D21C4195E5D}.Release|x86.Build.0 = Release|x86
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Debug|x86.ActiveCfg = Debug|x86
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Debug|x86.Build.0 = Debug|x86
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Release|x86.ActiveCfg = Release|x86
+		{037BB98D-473D-450F-8410-E46E101F57BE}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
