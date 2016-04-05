@@ -12,38 +12,43 @@ namespace LunaStar.Util
 {
     public class FileCompression
     {
-        static String _ExtractPath = string.Empty;
+        static string extractPath = string.Empty;
 
-        static public Boolean UnUnixZ(String FileName)
+        /// <summary>
+        /// Unix에서 생성한 Z 파일의 압축해제
+        /// </summary>
+        /// <param name="zFileName">압축해제할 Z 파일이름</param>
+        /// <returns>압축 해제 성공 여부</returns>
+        static public bool UnUnixZ(string zFileName)
         {
-            Boolean Result = true;
-            Byte[] buffer = new Byte[4096];
-
             try
             {
-                FileInfo fi = new FileInfo(FileName);
-                String _dir = fi.DirectoryName;
-                String _fn = Path.GetFileNameWithoutExtension(FileName);
-                String outFile = String.Format("{0}\\{1}", _dir, _fn);
+                FileInfo fi = new FileInfo(zFileName);
+                string directoryName = fi.DirectoryName;
+                string fileName = Path.GetFileNameWithoutExtension(zFileName);
+                string outputFileName = $"{directoryName}\\{fileName}";
 
-                using (Stream inStream = new LzwInputStream(File.OpenRead(FileName)))
-                using (FileStream outStream = File.Create(outFile))
+                using (Stream inStream = new LzwInputStream(File.OpenRead(zFileName)))
+                using (FileStream outStream = File.Create(outputFileName))
                 {
-                    Int32 read;
-                    while ((read = inStream.Read(buffer, 0, buffer.Length)) > 0)
+                    int bytesRead;
+                    byte[] buffer = new byte[4096];
+
+                    while ((bytesRead = inStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        outStream.Write(buffer, 0, read);
+                        outStream.Write(buffer, 0, bytesRead);
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                Result = false;
+                throw e;
+                //return false;
             }
-            return Result;
+            return true;
         }
 
-                /// <summary>
+        /// <summary>
         /// 특정 폴더를 ZIP으로 압축
         /// </summary>
         /// <param name="targetFolderPath">압축 대상 폴더 경로</param>
@@ -51,162 +56,149 @@ namespace LunaStar.Util
         /// <param name="password">압축 암호</param>
         /// <param name="isDeleteFolder">폴더 삭제 여부</param>
         /// <returns>압축 성공 여부</returns>
-        public static Boolean Zip(String targetFolderPath, String zipFilePath, String password, Boolean isDeleteFolder)
+        public static bool Zip(string targetFolderPath, string zipFilePath, string password, bool isDeleteFolder)
         {
-            Boolean retVal = false;
+            bool result = false;
 
-            // 폴더가 존재하는 경우에만 수행.
-            if (Directory.Exists(targetFolderPath))
+            if (!Directory.Exists(targetFolderPath)) // 폴더가 존재하는 경우에만 수행
+                return false;
+
+            ArrayList fileList = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록
+
+            int pathLength = (Directory.GetParent(targetFolderPath)).ToString().Length + 1; // find number of chars to remove. from orginal file path. remove '\'
+
+            using (ZipOutputStream zipOutputStream = new ZipOutputStream(File.Create(zipFilePath))) // ZIP 스트림 생성.
             {
-                ArrayList ar = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록.
-
-                // 압축 대상 폴더 경로의 길이 + 1
-                int TrimLength = (Directory.GetParent(targetFolderPath)).ToString().Length + 1; // find number of chars to remove. from orginal file path. remove '\'
-
-                FileStream ostream;
-                Byte[] obuffer;
-                String outPath = zipFilePath;
-
-                ICSharpCode.SharpZipLib.Zip.ZipOutputStream oZipStream = new ICSharpCode.SharpZipLib.Zip.ZipOutputStream(File.Create(outPath)); // ZIP 스트림 생성.
-
                 try
                 {
-                    // 패스워드가 있는 경우 패스워드 지정.
-                    if (password != null && password != String.Empty)
-                        oZipStream.Password = password;
+                    if (password != null && password != string.Empty) // 패스워드가 있는 경우 패스워드 지정
+                        zipOutputStream.Password = password;
 
-                    oZipStream.SetLevel(9); // 암호화 레벨.(최대 압축)
+                    zipOutputStream.SetLevel(9); // 암호화 레벨.(최대 압축)
 
-                    ICSharpCode.SharpZipLib.Zip.ZipEntry oZipEntry;
-                    foreach (String Fil in ar)
+                    ZipEntry zipEntry;
+                    foreach (string fileName in fileList)
                     {
-                        oZipEntry = new ICSharpCode.SharpZipLib.Zip.ZipEntry(Fil.Remove(0, TrimLength));
-                        oZipStream.PutNextEntry(oZipEntry);
+                        zipEntry = new ZipEntry(fileName.Remove(0, pathLength));
+                        zipOutputStream.PutNextEntry(zipEntry);
 
-                        // 파일인 경우.
-                        if (!Fil.EndsWith(@"/"))
+                        if (!fileName.EndsWith(@"/")) // 파일인 경우
                         {
-                            ostream = File.OpenRead(Fil);
-                            obuffer = new Byte[ostream.Length];
-                            ostream.Read(obuffer, 0, obuffer.Length);
-                            oZipStream.Write(obuffer, 0, obuffer.Length);
+                            using (FileStream fileStream = File.OpenRead(fileName))
+                            {
+                                byte[] buffer = new byte[fileStream.Length];
+                                fileStream.Read(buffer, 0, buffer.Length);
+                                zipOutputStream.Write(buffer, 0, buffer.Length);
+                            }
                         }
                     }
 
-                    retVal = true;
+                    result = true;
                 }
                 catch
                 {
-                    retVal = false;
+                    result = false;
                     // 오류가 난 경우 생성 했던 파일을 삭제.
-                    if (File.Exists(outPath))
-                        File.Delete(outPath);
+                    if (File.Exists(zipFilePath))
+                        File.Delete(zipFilePath);
                 }
                 finally
                 {
-                    // 압축 종료.
-                    oZipStream.Finish();
-                    oZipStream.Close();
+                    zipOutputStream.Finish(); // 압축 종료
+                    zipOutputStream.Close();
                 }
-
-
-                // 폴더 삭제를 원할 경우 폴더 삭제.
-                if (isDeleteFolder)
-                    try
-                    {
-                        Directory.Delete(targetFolderPath, true);
-                    }
-                    catch { }
             }
-            return retVal;
+
+            if (isDeleteFolder) // 폴더 삭제를 원할 경우 폴더 삭제
+            {
+                try
+                {
+                    Directory.Delete(targetFolderPath, true);
+                }
+                catch (Exception e)
+                {
+                    throw e;
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
         /// 파일, 폴더 목록 생성
         /// </summary>
-        /// <param name="Dir">폴더 경로</param>
+        /// <param name="directory">폴더 경로</param>
         /// <returns>폴더, 파일 목록(ArrayList)</returns>
-        private static ArrayList GenerateFileList(String Dir)
+        private static ArrayList GenerateFileList(string directory)
         {
-            ArrayList fils = new ArrayList();
+            ArrayList fileList = new ArrayList();
 
-            Boolean Empty = true;
-            // 폴더 내의 파일 추가.
-            foreach (String file in Directory.GetFiles(Dir))
+            bool isEmpty = true;
+
+            foreach (string fileName in Directory.GetFiles(directory)) // 폴더 내의 파일 추가
             {
-                fils.Add(file);
-                Empty = false;
+                fileList.Add(fileName);
+                isEmpty = false;
             }
 
-            if (Empty)
+            if (isEmpty)
             {
-                // 파일이 없고, 폴더도 없는 경우 자신의 폴더 추가.
-                if (Directory.GetDirectories(Dir).Length == 0)
-                    fils.Add(Dir + @"/");
+                if (Directory.GetDirectories(directory).Length == 0) // 파일이 없고, 폴더도 없는 경우 자신의 폴더 추가
+                    fileList.Add(directory + @"/");
             }
 
-
-            // 폴더 내 폴더 목록.
-            foreach (String dirs in Directory.GetDirectories(Dir))
+            foreach (string directoryName in Directory.GetDirectories(directory)) // 폴더 내 폴더 목록
             {
-                // 해당 폴더로 다시 GenerateFileList 재귀 호출
-                foreach (object obj in GenerateFileList(dirs))
+                foreach (object obj in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
                 {
-                    // 해당 폴더 내의 파일, 폴더 추가.
-                    fils.Add(obj);
+                    fileList.Add(obj); // 해당 폴더 내의 파일, 폴더 추가
                 }
             }
 
-            return fils;
+            return fileList;
         }
 
         /// <summary>
-        /// 압축 파일 풀기
+        /// ZIP 압축 파일 풀기
         /// </summary>
         /// <param name="zipFilePath">ZIP파일 경로</param>
         /// <param name="unZipTargetFolderPath">압축 풀 폴더 경로</param>
         /// <param name="password">해지 암호</param>
         /// <param name="isDeleteZipFile">zip파일 삭제 여부</param>
         /// <returns>압축 풀기 성공 여부 </returns>
-        public static Boolean Unzip(String zipFilePath, String unZipTargetFolderPath, String password, Boolean isDeleteZipFile)
+        public static bool Unzip(string zipFilePath, string unZipTargetFolderPath, string password, bool isDeleteZipFile)
         {
-            Boolean retVal = false;
+            bool result = false;
 
-            // ZIP 파일이 있는 경우만 수행.
-            if (File.Exists(zipFilePath))
+            if (!File.Exists(zipFilePath)) // ZIP 파일이 있는 경우만 수행
+                return false;
+
+            using (ZipInputStream zipInputStream = new ZipInputStream(File.OpenRead(zipFilePath))) // ZIP 스트림 생성
             {
-                // ZIP 스트림 생성.
-                ZipInputStream zipInputStream = new ZipInputStream(File.OpenRead(zipFilePath));
-
-                // 패스워드가 있는 경우 패스워드 지정.
-                if (password != null && password != String.Empty)
+                if (password != null && password != string.Empty) // 패스워드가 있는 경우 패스워드 지정
                     zipInputStream.Password = password;
 
                 try
                 {
                     ZipEntry theEntry;
-                    // 반복하며 파일을 가져옴.
-                    while ((theEntry = zipInputStream.GetNextEntry()) != null)
+
+                    while ((theEntry = zipInputStream.GetNextEntry()) != null) // 반복하며 파일을 가져옴
                     {
-                        String directoryName = Path.GetDirectoryName(theEntry.Name); // 폴더
-                        String fileName = Path.GetFileName(theEntry.Name); // 파일
+                        string directoryName = Path.GetDirectoryName(theEntry.Name); // 폴더 명칭
+                        string fileName = Path.GetFileName(theEntry.Name); // 파일 명칭
 
-                        // 폴더 생성
-                        Directory.CreateDirectory(unZipTargetFolderPath + directoryName);
+                        Directory.CreateDirectory(unZipTargetFolderPath + directoryName); // 폴더 생성
 
-                        // 파일 이름이 있는 경우
-                        if (fileName != String.Empty)
+                        if (fileName == string.Empty) // 파일 이름이 없으면 Pass
+                            continue;
+
+                        using (FileStream streamWriter = File.Create((unZipTargetFolderPath + theEntry.Name))) // 파일 스트림 생성.(파일생성)
                         {
-                            // 파일 스트림 생성.(파일생성)
-                            FileStream streamWriter = File.Create((unZipTargetFolderPath + theEntry.Name));
+                            byte[] data = new byte[2048];
 
-                            int size = 2048;
-                            Byte[] data = new Byte[2048];
-
-                            // 파일 복사
-                            while (true)
+                            while (true) // 파일 복사
                             {
-                                size = zipInputStream.Read(data, 0, data.Length);
+                                int size = zipInputStream.Read(data, 0, data.Length);
 
                                 if (size > 0)
                                     streamWriter.Write(data, 0, size);
@@ -214,57 +206,59 @@ namespace LunaStar.Util
                                     break;
                             }
 
-                            // 파일스트림 종료
-                            streamWriter.Close();
+                            streamWriter.Close(); // 파일스트림 종료
                         }
                     }
-                    retVal = true;
+                    result = true;
                 }
                 catch (Exception)
                 {
-                    retVal = false;
+                    result = false;
                 }
                 finally
                 {
-                    // ZIP 파일 스트림 종료
-                    zipInputStream.Close();
+                    zipInputStream.Close(); // ZIP 파일 스트림 종료
                 }
-
-                // ZIP파일 삭제를 원할 경우 파일 삭제.
-                if (isDeleteZipFile)
-                    try
-                    {
-                        File.Delete(zipFilePath);
-                    }
-                    catch { }
             }
 
-            return retVal;
+            if (isDeleteZipFile) // ZIP파일 삭제를 원할 경우 파일 삭제
+            {
+                try
+                {
+                    File.Delete(zipFilePath);
+                }
+                catch (Exception e)
+                {
+                    throw e;
+                }
+            }
+
+            return result;
         }
 
-        public static void UnTgz(string TgzName, string SavePath)
+        public static void UnTgz(string tgzFileName, string savePath)
         {
-            try
+            FileInfo fi = new FileInfo(tgzFileName);
+            if (fi.Exists == false)
             {
-                FileInfo fi = new FileInfo(TgzName);
-                if (fi.Exists == false)
-                {
-                    throw new Exception("파일이 존재하지 않습니다.");                    
-                }
+                throw new Exception("파일이 존재하지 않습니다.");
+            }
 
-                SevenZipExtractor se = new SevenZipExtractor(TgzName);
-                se.EventSynchronization = EventSynchronizationStrategy.AlwaysSynchronous;
-                //SavePath += string.Format(@"\{0}", Consts.PATH_TMP);
-                SavePath = SavePath.Replace(@"\\", @"\");
-                _ExtractPath = SavePath;
-                se.ExtractionFinished += se_ExtractionFinished;
-                se.ExtractArchive(SavePath);
-            }
-            catch (Exception)
+            using (SevenZipExtractor sevenZipExtractor = new SevenZipExtractor(tgzFileName))
             {
-                throw;
+                try
+                {
+                    sevenZipExtractor.EventSynchronization = EventSynchronizationStrategy.AlwaysSynchronous;
+                    savePath = savePath.Replace(@"\\", @"\");
+                    extractPath = savePath;
+                    sevenZipExtractor.ExtractionFinished += se_ExtractionFinished;
+                    sevenZipExtractor.ExtractArchive(savePath);
+                }
+                catch (Exception e)
+                {
+                    throw e;
+                }
             }
-            
         }
 
         static void se_ExtractionFinished(object sender, EventArgs e)
@@ -273,9 +267,9 @@ namespace LunaStar.Util
             {
                 FileInfo fi = new FileInfo((sender as SevenZipExtractor).FileName);
                 string fileName = fi.Name.Replace(fi.Extension, "");
-                string DirName = _ExtractPath;
+                string DirName = extractPath;
                 ArrayList ar = GenerateFileList(DirName);
-                foreach (String Fil in ar)
+                foreach (string Fil in ar)
                 {
                     fi = new FileInfo(Fil);
                     if (fi.Extension.ToUpper() == ".TAR")
@@ -291,7 +285,7 @@ namespace LunaStar.Util
             }
             finally
             {
-            
+
             }
         }
 
@@ -307,13 +301,13 @@ namespace LunaStar.Util
 
                 while ((theEntry = s.GetNextEntry()) != null)
                 {
-                    string FullName = String.Format("{0}\\{1}", fi.DirectoryName, theEntry.Name);
+                    string FullName = string.Format("{0}\\{1}", fi.DirectoryName, theEntry.Name);
                     string DirName = Path.GetDirectoryName(FullName);
                     string FileName = Path.GetFileName(FullName);
 
                     if (!Directory.Exists(DirName)) Directory.CreateDirectory(DirName);
 
-                    if (FileName != String.Empty)
+                    if (FileName != string.Empty)
                     {
                         FileStream SW = File.Create(FullName);
 
@@ -334,7 +328,8 @@ namespace LunaStar.Util
             {
                 //throw;
             }
-            finally {
+            finally
+            {
                 s.Close();
             }
         }
