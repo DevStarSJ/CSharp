@@ -42,8 +42,7 @@ namespace LunaStar.Util
             }
             catch (Exception e)
             {
-                throw e;
-                //return false;
+                throw new AggregateException("Fail FileCompression.UnUnixZ", e);
             }
             return true;
         }
@@ -58,8 +57,6 @@ namespace LunaStar.Util
         /// <returns>압축 성공 여부</returns>
         public static bool Zip(string targetFolderPath, string zipFilePath, string password, bool isDeleteFolder)
         {
-            bool result = false;
-
             if (!Directory.Exists(targetFolderPath)) // 폴더가 존재하는 경우에만 수행
                 return false;
 
@@ -69,19 +66,19 @@ namespace LunaStar.Util
 
             using (ZipOutputStream zipOutputStream = new ZipOutputStream(File.Create(zipFilePath))) // ZIP 스트림 생성.
             {
-                try
+                if (password != null && password != string.Empty) // 패스워드가 있는 경우 패스워드 지정
+                    zipOutputStream.Password = password;
+
+                zipOutputStream.SetLevel(9); // 암호화 레벨.(최대 압축)
+
+                ZipEntry zipEntry;
+                foreach (string fileName in fileList)
                 {
-                    if (password != null && password != string.Empty) // 패스워드가 있는 경우 패스워드 지정
-                        zipOutputStream.Password = password;
+                    zipEntry = new ZipEntry(fileName.Remove(0, pathLength));
+                    zipOutputStream.PutNextEntry(zipEntry);
 
-                    zipOutputStream.SetLevel(9); // 암호화 레벨.(최대 압축)
-
-                    ZipEntry zipEntry;
-                    foreach (string fileName in fileList)
+                    try
                     {
-                        zipEntry = new ZipEntry(fileName.Remove(0, pathLength));
-                        zipOutputStream.PutNextEntry(zipEntry);
-
                         if (!fileName.EndsWith(@"/")) // 파일인 경우
                         {
                             using (FileStream fileStream = File.OpenRead(fileName))
@@ -92,20 +89,19 @@ namespace LunaStar.Util
                             }
                         }
                     }
+                    catch (Exception e)
+                    {
+                        // 오류가 난 경우 생성 했던 파일을 삭제.
+                        if (File.Exists(zipFilePath))
+                            File.Delete(zipFilePath);
 
-                    result = true;
-                }
-                catch
-                {
-                    result = false;
-                    // 오류가 난 경우 생성 했던 파일을 삭제.
-                    if (File.Exists(zipFilePath))
-                        File.Delete(zipFilePath);
-                }
-                finally
-                {
-                    zipOutputStream.Finish(); // 압축 종료
-                    zipOutputStream.Close();
+                        throw new AggregateException("FileCompression.Zip : Fail to ZipOutputStream", e);
+                    }
+                    finally
+                    {
+                        zipOutputStream.Finish(); // 압축 종료
+                        zipOutputStream.Close();
+                    }
                 }
             }
 
@@ -117,11 +113,11 @@ namespace LunaStar.Util
                 }
                 catch (Exception e)
                 {
-                    throw e;
+                    throw new AggregateException("FileCompression.Zip : Fail to delete folder", e);
                 }
             }
 
-            return result;
+            return true;
         }
 
         /// <summary>
@@ -135,24 +131,45 @@ namespace LunaStar.Util
 
             bool isEmpty = true;
 
-            foreach (string fileName in Directory.GetFiles(directory)) // 폴더 내의 파일 추가
+            try
             {
-                fileList.Add(fileName);
-                isEmpty = false;
+                foreach (string fileName in Directory.GetFiles(directory)) // 폴더 내의 파일 추가
+                {
+                    fileList.Add(fileName);
+                    isEmpty = false;
+                }
+            }
+            catch (Exception e)
+            {
+                throw new AggregateException("FileCompression.GenetateFileList : Fail to add files", e);
             }
 
             if (isEmpty)
             {
-                if (Directory.GetDirectories(directory).Length == 0) // 파일이 없고, 폴더도 없는 경우 자신의 폴더 추가
-                    fileList.Add(directory + @"/");
+                try
+                {
+                    if (Directory.GetDirectories(directory).Length == 0) // 파일이 없고, 폴더도 없는 경우 자신의 폴더 추가
+                        fileList.Add(directory + @"/");
+                }
+                catch (Exception e)
+                {
+                    throw new AggregateException("FileCompression.GenetateFileList : Fail to add self", e);
+                }
             }
 
-            foreach (string directoryName in Directory.GetDirectories(directory)) // 폴더 내 폴더 목록
+            try
             {
-                foreach (object obj in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
+                foreach (string directoryName in Directory.GetDirectories(directory)) // 폴더 내 폴더 목록
                 {
-                    fileList.Add(obj); // 해당 폴더 내의 파일, 폴더 추가
+                    foreach (object obj in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
+                    {
+                        fileList.Add(obj); // 해당 폴더 내의 파일, 폴더 추가
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                throw new AggregateException("FileCompression.GenetateFileList : Fail to add directories", e);
             }
 
             return fileList;
@@ -168,8 +185,6 @@ namespace LunaStar.Util
         /// <returns>압축 풀기 성공 여부 </returns>
         public static bool Unzip(string zipFilePath, string unZipTargetFolderPath, string password, bool isDeleteZipFile)
         {
-            bool result = false;
-
             if (!File.Exists(zipFilePath)) // ZIP 파일이 있는 경우만 수행
                 return false;
 
@@ -209,11 +224,10 @@ namespace LunaStar.Util
                             streamWriter.Close(); // 파일스트림 종료
                         }
                     }
-                    result = true;
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    result = false;
+                    throw new AggregateException("FileCompression.Unzip : Fail to ZipInputStream", e);
                 }
                 finally
                 {
@@ -229,16 +243,30 @@ namespace LunaStar.Util
                 }
                 catch (Exception e)
                 {
-                    throw e;
+                    throw new AggregateException("FileCompression.Unzip : Fail to delete zip file", e);
                 }
             }
 
-            return result;
+            return true;
         }
 
+        /// <summary>
+        /// tgz 파일 압축 풀기
+        /// </summary>
+        /// <param name="tgzFileName">tgz 파일명</param>
+        /// <param name="savePath">저장할 파일 위치</param>
         public static void UnTgz(string tgzFileName, string savePath)
         {
-            FileInfo fi = new FileInfo(tgzFileName);
+            FileInfo fi = null;
+            try
+            {
+                fi = new FileInfo(tgzFileName);
+            }
+            catch (Exception e)
+            {
+                throw new AggregateException("FileCompression.UnTgz : Fail to get fileInfo", e);
+            }
+
             if (fi.Exists == false)
             {
                 throw new Exception("파일이 존재하지 않습니다.");
@@ -251,17 +279,22 @@ namespace LunaStar.Util
                     sevenZipExtractor.EventSynchronization = EventSynchronizationStrategy.AlwaysSynchronous;
                     savePath = savePath.Replace(@"\\", @"\");
                     extractPath = savePath;
-                    sevenZipExtractor.ExtractionFinished += se_ExtractionFinished;
+                    sevenZipExtractor.ExtractionFinished += ExtractionFinishedHandler;
                     sevenZipExtractor.ExtractArchive(savePath);
                 }
                 catch (Exception e)
                 {
-                    throw e;
+                    throw new AggregateException("FileCompression.UnTgz : Fail sevenZipExtractor", e);
                 }
             }
         }
 
-        static void se_ExtractionFinished(object sender, EventArgs e)
+        /// <summary>
+        /// SevenZupExtractor에서 사용하는 ExtractionFinished Handler
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        static void ExtractionFinishedHandler(object sender, EventArgs e)
         {
             try
             {
@@ -279,58 +312,55 @@ namespace LunaStar.Util
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                throw;
-            }
-            finally
-            {
-
+                throw new AggregateException("FileCompression.ExtractionFinishedHandler : Fail sevenZipExtractor", ex);
             }
         }
 
+        /// <summary>
+        /// tar 파일 압축 해제
+        /// </summary>
+        /// <param name="TarName">tar 파일명</param>
         public static void UnTar(string TarName)
         {
-            TarInputStream s = null;
             try
             {
                 FileInfo fi = new FileInfo(TarName);
 
-                s = new TarInputStream(File.OpenRead(TarName));
-                TarEntry theEntry;
-
-                while ((theEntry = s.GetNextEntry()) != null)
+                using (TarInputStream s = new TarInputStream(File.OpenRead(TarName)))
                 {
-                    string FullName = string.Format("{0}\\{1}", fi.DirectoryName, theEntry.Name);
-                    string DirName = Path.GetDirectoryName(FullName);
-                    string FileName = Path.GetFileName(FullName);
+                    TarEntry theEntry;
 
-                    if (!Directory.Exists(DirName)) Directory.CreateDirectory(DirName);
-
-                    if (FileName != string.Empty)
+                    while ((theEntry = s.GetNextEntry()) != null)
                     {
-                        FileStream SW = File.Create(FullName);
+                        string FullName = string.Format("{0}\\{1}", fi.DirectoryName, theEntry.Name);
+                        string DirName = Path.GetDirectoryName(FullName);
+                        string FileName = Path.GetFileName(FullName);
 
-                        int Size = 2048;
-                        byte[] data = new byte[2048];
-                        while (true)
+                        if (!Directory.Exists(DirName)) Directory.CreateDirectory(DirName);
+
+                        if (FileName != string.Empty)
                         {
-                            Size = s.Read(data, 0, data.Length);
-                            if (Size > 0) SW.Write(data, 0, Size);
-                            else break;
+                            FileStream SW = File.Create(FullName);
+
+                            int Size = 2048;
+                            byte[] data = new byte[2048];
+                            while (true)
+                            {
+                                Size = s.Read(data, 0, data.Length);
+                                if (Size > 0) SW.Write(data, 0, Size);
+                                else break;
+                            }
+                            SW.Close();
                         }
-                        SW.Close();
                     }
                 }
 
             }
-            catch
+            catch (Exception e)
             {
-                //throw;
-            }
-            finally
-            {
-                s.Close();
+                throw new AggregateException("FileCompression.UnTar : Fail untar", e);
             }
         }
     }
