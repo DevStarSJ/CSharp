@@ -13,8 +13,6 @@ namespace LunaStar.Util
 {
     public class FileCompression
     {
-        static string extractPath = string.Empty;
-
         /// <summary>
         /// Unix에서 생성한 Z 파일의 압축해제
         /// </summary>
@@ -279,8 +277,14 @@ namespace LunaStar.Util
                 {
                     sevenZipExtractor.EventSynchronization = EventSynchronizationStrategy.AlwaysSynchronous;
                     savePath = savePath.Replace(@"\\", @"\");
-                    extractPath = savePath;
-                    sevenZipExtractor.ExtractionFinished += ExtractionFinishedHandler;
+
+                    sevenZipExtractor.ExtractionFinished +=
+                        (sender, e) =>
+                        {
+                            ExtractionFinishedHandler(null,
+                                                      new SevenZipExtractionFinishedEventArgs(savePath));
+                        };
+
                     sevenZipExtractor.ExtractArchive(savePath);
                 }
                 catch (Exception e)
@@ -291,17 +295,31 @@ namespace LunaStar.Util
         }
 
         /// <summary>
+        /// ExtractionFinishedHandler의 EventArgs
+        /// UnTgz에서 저장할 파일 위치를 내부에 담아서 전달
+        /// </summary>
+        private class SevenZipExtractionFinishedEventArgs
+        {
+            public string ExtractPath { get; set; }
+
+            public SevenZipExtractionFinishedEventArgs(string extractPath)
+            {
+                ExtractPath = extractPath;
+            }
+        }
+
+        /// <summary>
         /// SevenZupExtractor에서 사용하는 ExtractionFinished Handler
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        static void ExtractionFinishedHandler(object sender, EventArgs e)
+        static void ExtractionFinishedHandler(object sender, SevenZipExtractionFinishedEventArgs e)
         {
             try
             {
                 FileInfo fi = new FileInfo((sender as SevenZipExtractor).FileName);
                 string fileName = fi.Name.Replace(fi.Extension, "");
-                string DirName = extractPath;
+                string DirName = e.ExtractPath;
                 ArrayList ar = GenerateFileList(DirName);
                 foreach (string Fil in ar)
                 {
@@ -366,5 +384,4 @@ namespace LunaStar.Util
         }
     }
 }
-
 ```
