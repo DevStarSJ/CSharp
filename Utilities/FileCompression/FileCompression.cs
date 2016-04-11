@@ -1,10 +1,9 @@
-﻿using System;
-using System.IO;
-using ICSharpCode.SharpZipLib.Tar;
+﻿using ICSharpCode.SharpZipLib.Tar;
 using ICSharpCode.SharpZipLib.Zip;
 using SevenZip;
-using System.Collections;
+using System;
 using System.Collections.Generic;
+using System.IO;
 
 // 솔루션 빌드 후 이벤트에 아래 줄 추가 (단 최종경로 확인 필수 : Project명에 . 들어가는 경우 실제 폴더 구조랑 다를 수 있음
 // COPY /Y "$(SolutionDir)$(ProjectName)\7z.dll" "$(SolutionDir)$(SolutionName)\$(OutDir)\7z.dll"
@@ -59,7 +58,7 @@ namespace LunaStar.Util
             if (!Directory.Exists(targetFolderPath)) // 폴더가 존재하는 경우에만 수행
                 return false;
 
-            var fileList = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록
+            List<string> fileList = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록
 
             int pathLength = (Directory.GetParent(targetFolderPath)).ToString().Length + 1; // find number of chars to remove. from orginal file path. remove '\'
 
@@ -160,7 +159,7 @@ namespace LunaStar.Util
             {
                 foreach (string directoryName in Directory.GetDirectories(directory)) // 폴더 내 폴더 목록
                 {
-                    foreach (var fileName in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
+                    foreach (string fileName in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
                     {
                         fileList.Add(fileName); // 해당 폴더 내의 파일, 폴더 추가
                     }
@@ -254,10 +253,11 @@ namespace LunaStar.Util
         /// </summary>
         /// <param name="fileName">tgz 파일명</param>
         /// <param name="savePath">저장할 파일 위치</param>
-        public static void UnTgz(string fileName, string savePath)
+        /// <returns>압축 풀기 성공 여부 </returns>
+        public static bool UnTgz(string fileName, string savePath)
         {
             if (!File.Exists(fileName))
-                throw new Exception("파일이 존재하지 않습니다.");
+                return false;
 
             using (SevenZipExtractor sevenZipExtractor = new SevenZipExtractor(fileName))
             {
@@ -270,7 +270,7 @@ namespace LunaStar.Util
                         {
                             try
                             {
-                                var fileList = GenerateFileList(savePath);
+                                List<string> fileList = GenerateFileList(savePath);
                                 foreach (string file in fileList)
                                 {
                                     var fi = new FileInfo(file);
@@ -294,6 +294,8 @@ namespace LunaStar.Util
                     throw new AggregateException("FileCompression.UnTgz : Fail sevenZipExtractor", e);
                 }
             }
+
+            return true;
         }
 
         /// <summary>
