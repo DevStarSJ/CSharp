@@ -33,96 +33,83 @@ namespace LunaStar.Network.TCP
     } // end of class StateObject
 
     #region 사용하지 않음 - 인터넷 긁어옴
+
     /// <summary>
     /// 비동기 소켓에서 발생한 에러 처리를 위한 이벤트 Argument Class
     /// </summary>
     public class AsyncSocketErrorEventArgs : EventArgs
     {
-        private readonly Exception exception;
-        private readonly int id = 0;
+        public int Id { get; private set; } = 0;
+        public Exception AsyncSocketException { get; private set; }
 
         public AsyncSocketErrorEventArgs(int id, Exception exception)
         {
-            this.id = id;
-            this.exception = exception;
+            Id = id;
+            AsyncSocketException = exception;
         }
-
-        public Exception AsyncSocketException { get { return this.exception; } }
-        public int ID { get { return this.id; } }
-    } // end of class AsyncSocketErrorEventArgs
+    }
 
     /// <summary>
     /// 비동기 소켓의 연결 및 연결해제 이벤트 처리를 위한 Argument Class
     /// </summary>
     public class AsyncSocketConnectionEventArgs : EventArgs
     {
-        private readonly int id = 0;
+        public int Id { get; private set; }
 
         public AsyncSocketConnectionEventArgs(int id)
         {
-            this.id = id;
+            Id = id;
         }
-
-        public int ID { get { return this.id; } }
-    } // end of class AsyncSocketConnectionEventArgs
+    }
 
     /// <summary>
     /// 비동기 소캣의 데이터 전송 이벤트 처리를 위한 Argument Class
     /// </summary>
     public class AsyncSocketSendEventArgs : EventArgs
     {
-        private readonly int id = 0;
-        private readonly int sendBytes;
+        public int SendBytes { get; private set; }
+        public int Id { get; private set; }
 
         public AsyncSocketSendEventArgs(int id, int sendBytes)
         {
-            this.id = id;
-            this.sendBytes = sendBytes;
+            Id = id;
+            SendBytes = sendBytes;
         }
-
-        public int SendBytes { get { return this.sendBytes; } }
-        public int ID { get { return this.id; } }
-    } // end of class AsyncSocketSendEventArgs
+    }
 
     /// <summary>
     /// 비동기 소켓의 데이터 수신 이벤트 처리를 위한 Argument Class
     /// </summary>
     public class AsyncSocketReceiveEventArgs : EventArgs
     {
-        private readonly int id = 0;
-        private readonly int receiveBytes;
-        private readonly byte[] receiveData;
+        public int Id { get; private set; } = 0;
+        public int ReceiveBytes { get; private set; }
+        public byte[] ReceiveData { get; private set; }
 
         public AsyncSocketReceiveEventArgs(int id, int receiveBytes, byte[] receiveData)
         {
-            this.id = id;
-            this.receiveBytes = receiveBytes;
-            this.receiveData = receiveData;
+            Id = id;
+            ReceiveBytes = receiveBytes;
+            ReceiveData = receiveData;
         }
-
-        public int ReceiveBytes { get { return this.receiveBytes; } }
-        public byte[] ReceiveData { get { return this.receiveData; } }
-        public int ID { get { return this.id; } }
-    } // end of class AsyncSocketReceiveEventArgs
+    }
 
     /// <summary>
     /// 비동기 서버의 Accept 이벤트를 위한 Argument Class
     /// </summary>
     public class AsyncSocketAcceptEventArgs : EventArgs
     {
-        private readonly Socket conn;
+        public Socket Conn { get; private set; }
 
         public AsyncSocketAcceptEventArgs(Socket conn)
         {
-            this.conn = conn;
+            Conn = conn;
         }
-
-        public Socket Worker { get { return this.conn; } }
-    } // end of class AsyncSocketAcceptEventArgs
+    }
 
     ///
     /// delegate 정의
-    /// 
+    ///
     public delegate void AsyncSocketErrorEventHandler(object sender, AsyncSocketErrorEventArgs e);
     public delegate void AsyncSocketConnectEventHandler(object sender, AsyncSocketConnectionEventArgs e);
     public delegate void AsyncSocketCloseEventHandler(object sender, AsyncSocketConnectionEventArgs e);
@@ -132,7 +119,7 @@ namespace LunaStar.Network.TCP
 
     public class AsyncSocketClass
     {
-        protected int id;
+        public int Id { get; private set; } = -1;
 
         // Event Handler
         public event AsyncSocketErrorEventHandler OnError;
@@ -144,15 +131,12 @@ namespace LunaStar.Network.TCP
 
         public AsyncSocketClass()
         {
-            this.id = -1;
         }
 
         public AsyncSocketClass(int id)
         {
-            this.id = id;
+            Id = id;
         }
-
-        public int ID { get { return this.id; } }
 
         protected virtual void ErrorOccured(AsyncSocketErrorEventArgs e)
         {
@@ -202,16 +186,13 @@ namespace LunaStar.Network.TCP
                 handler(this, e);
         }
 
-    } // end of class AsyncSocketClass
+    }
     #endregion
 
-    /* Class :      TcpAsynServer
-     * Content :    비동기 TCP Socket을 이용하여 Non-blocking 으로 Client로 부터의 요청을 처리
-     *              Accept, Receive, Disconnect 3부분의 Method를 delegate를 이용하여 외부에서 구현
-     *              
-     * Author : 윤석준 (JS-System)
-     * Date : 2011. 1.11
-     */
+     /// <summary>
+     /// 비동기 TCP Socket을 이용하여 Non-blocking 으로 Client로 부터의 요청을 처리
+     /// Accept, Receive, Disconnect 3부분의 Method를 delegate를 이용하여 외부에서 구현
+     /// </summary>
     public class TcpAsynServer : IDisposable
     {
         public delegate String Delegate_WorkString(Socket sock, String str, Object obj);
@@ -219,82 +200,42 @@ namespace LunaStar.Network.TCP
         public delegate void Delegate_Accept_Work(Socket sock, Object obj);
         public delegate void Delegate_Disconnect_Work(String key, Object obj);
 
-        private Delegate_WorkByte _ReceiveWork;
-        private Delegate_Accept_Work _AcceptWork;
-        private Delegate_Disconnect_Work _DisconnectWork;
-
-        private Hashtable _ListClient = new Hashtable();
-        private ArrayList _SendID = new ArrayList();
-        private int _port;
-        private String _ip = null;
-
-
         // Thread signal
         // 쓰레드를 동작시키고 멈추게 하는 역할. Multi Thread에서 동기화를 맞추기 위한 용도라는데 그까진 모르겠고.
         private ManualResetEvent allDone = new ManualResetEvent(false);
         private ManualResetEvent recvDone = new ManualResetEvent(false);
 
-        #region Properties
-
         /// <summary>
         /// Accept를 위해 열어놓을 Port
         /// </summary>
-        public int Port
-        {
-            get { return _port; }
-            set { _port = value; }
-        }
+        public int Port { set; get; }
 
-        public String Ip
-        {
-            get { return _ip; }
-            set { _ip = value; }
-        }
+        public string Ip { set; get; } = null;
 
         /// <summary>
         /// 접속한 Client들의 Socket을 저장
         /// </summary>
-        public Hashtable ListClient
-        {
-            get { return _ListClient; }
-            set { _ListClient = value; }
-        }
+        public Hashtable ClientList { set; get; } = new Hashtable();
 
         /// <summary>
         /// Data를 Send할 Client들의 Key
         /// </summary>
-        public ArrayList SendID
-        {
-            get { return _SendID; }
-            set { _SendID = value; }
-        }
+        public ArrayList SendID { set; get; } = new ArrayList();
 
         /// <summary>
         /// Receive 했을때 처리해야하는 Method의 대리자
         /// </summary>
-        public Delegate_WorkByte ReceiveWork
-        {
-            set { _ReceiveWork = value; }
-        }
+        public Delegate_WorkByte ReceiveWork { set; private get; }
 
         /// <summary>
         /// Accept 했을때 처리해야하는 Method의 대리자
         /// </summary>
-        public Delegate_Accept_Work AcceptWork
-        {
-            set { _AcceptWork = value; }
-        }
+        public Delegate_Accept_Work AcceptWork { set; private get; }
 
         /// <summary>
         /// Disconnect 했을때 처리해야하는 Method의 대리자
         /// </summary>
-        public Delegate_Disconnect_Work DisconnectWork
-        {
-            set { _DisconnectWork = value; }
-        }
-
-        #endregion
-
+        public Delegate_Disconnect_Work DisconnectWork { set; private get; }
 
 
         /// <summary>
@@ -319,30 +260,30 @@ namespace LunaStar.Network.TCP
         private void RemoveClient(String key)
         {
             if (key == null) return;
-            Socket sock = ListClient[key] as Socket;
-            _DisconnectWork(key, this);
+            Socket sock = ClientList[key] as Socket;
+            DisconnectWork(key, this);
             Disconnect(sock);
         }
 
         // Socket을 이용하여 접속종료
         private void RemoveClient(Object value)
         {
-            RemoveClient(FindKey(ListClient, value) as String);
+            RemoveClient(FindKey(ClientList, value) as String);
         }
 
         // Accept 동작의 Default 대리자 Method
         private void Default_Accept_Work(Socket sock, Object obj)
         {
-            ListClient.Add(sock.RemoteEndPoint.ToString(), sock);
+            ClientList.Add(sock.RemoteEndPoint.ToString(), sock);
             Console.WriteLine("Connected : {0}", sock.RemoteEndPoint.ToString());
         }
 
         // Disconnect 동작의 Default 대리자 Method
         private void Default_Disconnect_Work(String key, Object obj)
         {
-            Socket sock = ListClient[key] as Socket;
+            Socket sock = ClientList[key] as Socket;
             Console.WriteLine("Disconnected : {0}", sock.RemoteEndPoint.ToString());
-            ListClient.Remove(key);
+            ClientList.Remove(key);
         }
 
 
@@ -352,7 +293,6 @@ namespace LunaStar.Network.TCP
         /// <param name="port">Accept때 사용할 Port</param>
         public TcpAsynServer(int port)
         {
-            Ip = null;
             CommonConstructor(port, null);
         }
 
@@ -379,9 +319,9 @@ namespace LunaStar.Network.TCP
         private void CommonConstructor(int port, Delegate_WorkByte Work)
         {
             Port = port;
-            _ReceiveWork = Work;
-            _AcceptWork = Default_Accept_Work;
-            _DisconnectWork = Default_Disconnect_Work;
+            ReceiveWork = Work;
+            AcceptWork = Default_Accept_Work;
+            DisconnectWork = Default_Disconnect_Work;
         }
 
         /// <summary>
@@ -396,13 +336,12 @@ namespace LunaStar.Network.TCP
         // Server 구동
         private void StartListening()
         {
-            byte[] bytes = new Byte[1024];
+            byte[] bytes = new byte[1024];
             Socket listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             // Bind the socket to the local endpoint and listen for incoming connections.
             try
             {
-
                 // Bind 와 Listen은 짝으로 사용해야함. Bind로 End Point를 연결해놓고 Listen으로 다른 Client들의 연결을 기다림.
                 if (Ip == null)
                 {
@@ -435,7 +374,7 @@ namespace LunaStar.Network.TCP
             StateObject state = new StateObject(sock); // ar에서부터 socket을 가져옴
             state.sock.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReadCallback), state);
 
-            _AcceptWork(sock, null);
+            AcceptWork(sock, null);
         }
 
         // Read이후에 호출되는 callback 함수
@@ -491,7 +430,7 @@ namespace LunaStar.Network.TCP
 
 
                 //Console.WriteLine("Read {0} bytes from socket. \n Data : {1}", content.Length, content); // 읽어온 Data를 출력
-                Byte[] result = _ReceiveWork(handler, Lb_Read, this);
+                Byte[] result = ReceiveWork(handler, Lb_Read, this);
 
                 //if (result.IndexOf("<EOF>") > -1)
                 //{
