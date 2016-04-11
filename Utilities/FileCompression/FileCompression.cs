@@ -4,6 +4,7 @@ using ICSharpCode.SharpZipLib.Tar;
 using ICSharpCode.SharpZipLib.Zip;
 using SevenZip;
 using System.Collections;
+using System.Collections.Generic;
 
 // 솔루션 빌드 후 이벤트에 아래 줄 추가 (단 최종경로 확인 필수 : Project명에 . 들어가는 경우 실제 폴더 구조랑 다를 수 있음
 // COPY /Y "$(SolutionDir)$(ProjectName)\7z.dll" "$(SolutionDir)$(SolutionName)\$(OutDir)\7z.dll"
@@ -58,7 +59,7 @@ namespace LunaStar.Util
             if (!Directory.Exists(targetFolderPath)) // 폴더가 존재하는 경우에만 수행
                 return false;
 
-            ArrayList fileList = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록
+            var fileList = GenerateFileList(targetFolderPath); // 압축 대상 폴더의 파일 목록
 
             int pathLength = (Directory.GetParent(targetFolderPath)).ToString().Length + 1; // find number of chars to remove. from orginal file path. remove '\'
 
@@ -123,9 +124,9 @@ namespace LunaStar.Util
         /// </summary>
         /// <param name="directory">폴더 경로</param>
         /// <returns>폴더, 파일 목록(ArrayList)</returns>
-        private static ArrayList GenerateFileList(string directory)
+        private static List<string> GenerateFileList(string directory)
         {
-            ArrayList fileList = new ArrayList();
+            var fileList = new List<string>();
 
             bool isEmpty = true;
 
@@ -159,9 +160,9 @@ namespace LunaStar.Util
             {
                 foreach (string directoryName in Directory.GetDirectories(directory)) // 폴더 내 폴더 목록
                 {
-                    foreach (object obj in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
+                    foreach (var fileName in GenerateFileList(directoryName)) // 해당 폴더로 다시 GenerateFileList 재귀 호출
                     {
-                        fileList.Add(obj); // 해당 폴더 내의 파일, 폴더 추가
+                        fileList.Add(fileName); // 해당 폴더 내의 파일, 폴더 추가
                     }
                 }
             }
@@ -251,37 +252,39 @@ namespace LunaStar.Util
         /// <summary>
         /// tgz 파일 압축 풀기
         /// </summary>
-        /// <param name="tgzFileName">tgz 파일명</param>
+        /// <param name="fileName">tgz 파일명</param>
         /// <param name="savePath">저장할 파일 위치</param>
-        public static void UnTgz(string tgzFileName, string savePath)
+        public static void UnTgz(string fileName, string savePath)
         {
-            FileInfo fi = null;
-            try
-            {
-                fi = new FileInfo(tgzFileName);
-            }
-            catch (Exception e)
-            {
-                throw new AggregateException("FileCompression.UnTgz : Fail to get fileInfo", e);
-            }
-
-            if (fi.Exists == false)
-            {
+            if (!File.Exists(fileName))
                 throw new Exception("파일이 존재하지 않습니다.");
-            }
 
-            using (SevenZipExtractor sevenZipExtractor = new SevenZipExtractor(tgzFileName))
+            using (SevenZipExtractor sevenZipExtractor = new SevenZipExtractor(fileName))
             {
                 try
                 {
                     sevenZipExtractor.EventSynchronization = EventSynchronizationStrategy.AlwaysSynchronous;
                     savePath = savePath.Replace(@"\\", @"\");
-
                     sevenZipExtractor.ExtractionFinished +=
                         (sender, e) =>
                         {
-                            ExtractionFinishedHandler(null,
-                                                      new SevenZipExtractionFinishedEventArgs(savePath));
+                            try
+                            {
+                                var fileList = GenerateFileList(savePath);
+                                foreach (string file in fileList)
+                                {
+                                    var fi = new FileInfo(file);
+                                    if (fi.Extension.ToUpper() == ".TAR")
+                                    {
+                                        UnTar(file);
+                                        fi.Delete();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new AggregateException("FileCompression.ExtractionFinishedHandler : Fail sevenZipExtractor", ex);
+                            }
                         };
 
                     sevenZipExtractor.ExtractArchive(savePath);
@@ -290,49 +293,6 @@ namespace LunaStar.Util
                 {
                     throw new AggregateException("FileCompression.UnTgz : Fail sevenZipExtractor", e);
                 }
-            }
-        }
-
-        /// <summary>
-        /// ExtractionFinishedHandler의 EventArgs
-        /// UnTgz에서 저장할 파일 위치를 내부에 담아서 전달
-        /// </summary>
-        private class SevenZipExtractionFinishedEventArgs
-        {
-            public string ExtractPath { get; set; }
-
-            public SevenZipExtractionFinishedEventArgs(string extractPath)
-            {
-                ExtractPath = extractPath;
-            }
-        }
-
-        /// <summary>
-        /// SevenZupExtractor에서 사용하는 ExtractionFinished Handler
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        static void ExtractionFinishedHandler(object sender, SevenZipExtractionFinishedEventArgs e)
-        {
-            try
-            {
-                FileInfo fi = new FileInfo((sender as SevenZipExtractor).FileName);
-                string fileName = fi.Name.Replace(fi.Extension, "");
-                string DirName = e.ExtractPath;
-                ArrayList ar = GenerateFileList(DirName);
-                foreach (string Fil in ar)
-                {
-                    fi = new FileInfo(Fil);
-                    if (fi.Extension.ToUpper() == ".TAR")
-                    {
-                        UnTar(Fil);
-                        fi.Delete();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new AggregateException("FileCompression.ExtractionFinishedHandler : Fail sevenZipExtractor", ex);
             }
         }
 
