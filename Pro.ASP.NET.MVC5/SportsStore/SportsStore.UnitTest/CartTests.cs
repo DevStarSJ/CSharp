@@ -79,7 +79,6 @@ namespace SportsStore.UnitTest
             ArrangeBeforeTest();
 
             // Act
-
             cart.AddItem(p1, 1);
             cart.AddItem(p2, 3);
             cart.AddItem(p3, 5);
@@ -88,7 +87,6 @@ namespace SportsStore.UnitTest
             cart.RemoveLine(p2);
 
             // Assert
-
             Assert.AreEqual(cart.Lines.Where(l => l.Product == p2).Count(), 0);
             Assert.AreEqual(cart.Lines.Count(), 2);
         }
@@ -100,7 +98,6 @@ namespace SportsStore.UnitTest
             ArrangeBeforeTest();
 
             // Act
-
             cart.AddItem(p1, 1);
             cart.AddItem(p2, 1);
             cart.AddItem(p1, 3);
@@ -117,7 +114,6 @@ namespace SportsStore.UnitTest
             ArrangeBeforeTest();
 
             // Act
-
             cart.AddItem(p1, 1);
             cart.AddItem(p2, 1);
             cart.AddItem(p1, 3);
@@ -125,7 +121,6 @@ namespace SportsStore.UnitTest
             cart.Clear();
 
             // Assert
-
             Assert.AreEqual(cart.Lines.Count(), 0);
         }
 
@@ -152,7 +147,6 @@ namespace SportsStore.UnitTest
             ArrangeBeforeTest();
 
             // Act
-
             CartController target = new CartController(mock.Object, null);
             RedirectToRouteResult result = target.AddToCart(cart, 2, "myUrl");
 

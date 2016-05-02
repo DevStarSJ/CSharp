@@ -39,7 +39,7 @@ namespace SportsStore.WebUI.Infrastructure
 
             EmailSessings emailSettings = new EmailSessings
             {
-                WriteAsFile = bool.Parse(ConfigurationManager.AppSettings["Email.WeiteAsFile"] ?? "false")
+                WriteAsFile = bool.Parse(ConfigurationManager.AppSettings["Email.WriteAsFile"] ?? "false")
             };
 
             kernel.Bind<IOrderProcessor>().To<EmailOrderProcessor>().WithConstructorArgument("setting", emailSettings);
