@@ -1,0 +1,35 @@
+﻿@{
+    ViewData["Title"] = "WebSocket Chat Page";
+}
+
+<form id="chatform" action="">
+    <input id="inputbox" />
+</form>
+<div id="message" />
+
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function()
+    {
+        var username = prompt('Enter your name: ');
+        var uri = 'ws://localhost:9258';
+        var ws = new WebSocket(uri);
+
+        ws.onopen = function () {
+            $('#message').prepend('<div>Connected.</div>');
+            $('#chatform').submit(function (event) {
+                ws.send('<strong>' + username + ' : </strong>' +$('#inputbox').val());
+                $('#inputbox').val('');
+                event.preventDefault();
+             });
+        };
+
+        ws.onerror = function (event) {
+            $('#message').prepend('<div>ERROR</div>');
+        };
+
+        ws.onmessage = function (event) {
+            $('#message').prepend('<div>' + event.data + '</div>');
+        };
+    });
+</script>
