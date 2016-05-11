@@ -192,7 +192,7 @@ public ActionResult Chat()
 `Startup.cs` 파일의 `public class Startup`에 thread-safety한 map을 하나 선언합니다.
 
 ```C#
-ConcurrentBag<WebSocket> _sockets = new ConcurrentBag<WebSocket>();
+ConcurrentDictionay<WebSocket,bool> _sockets = new ConcurrentDictionay<WebSocket,bool>();
 ```
 
 ![그림 WS5.05](https://github.com/DevStarSJ/CSharp/blob/master/ASP.NET/WebSocket5/image/ws5.05.png?raw=true)  
@@ -201,17 +201,24 @@ ConcurrentBag<WebSocket> _sockets = new ConcurrentBag<WebSocket>();
 `// Handle the socket here` 바로 윗 부분에 아래 Code를 추가합니다.
 
 ```C#
-_sockets.Add(webSocket);
+_sockets.TryAdd(webSocket);
 ```
 
 Client에게 `SendAsync()`를 하는 부분을 전체 Client에게 전송하도록 수정합니다.
 `// Handle request here` 아래에 있는 `await webSocket.SendAsync()`줄을 지우고 아래 Code를 입력해주세요.
 
 ```C#
-foreach (var socket in _sockets)
+foreach (var socket in _sockets.Keys)
 {
     await socket.SendAsync(buffer, WebSocketMessageType.Text, true, token);
 }
+```
+
+`while(...) { ... }` 아래에 다음과 같이 접속 종료시 `_sockets`에서 삭제하는 Code도 추가합니다.
+
+```C#
+bool temp;
+_sockets.TryRemove(webSocket, out temp);
 ```
 
 ##6. 실행
