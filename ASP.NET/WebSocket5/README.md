@@ -201,7 +201,7 @@ ConcurrentDictionay<WebSocket,bool> _sockets = new ConcurrentDictionay<WebSocket
 `// Handle the socket here` 바로 윗 부분에 아래 Code를 추가합니다.
 
 ```C#
-_sockets.TryAdd(webSocket);
+_sockets.TryAdd(webSocket, false);
 ```
 
 Client에게 `SendAsync()`를 하는 부분을 전체 Client에게 전송하도록 수정합니다.
