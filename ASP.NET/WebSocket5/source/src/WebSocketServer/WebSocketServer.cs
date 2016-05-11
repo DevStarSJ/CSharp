@@ -12,8 +12,8 @@ namespace Networks
     {
         public int BufferSize { get; set; } = 4096;
 
-        private ConcurrentBag<WebSocket> ClientSockets = new ConcurrentBag<WebSocket>();
-
+        private ConcurrentDictionary<WebSocket, bool> ClientSockets = new ConcurrentDictionary<WebSocket, bool>();
+        
         public async Task Start(HttpContext http, Func<Task> next)
         {
             if (http.WebSockets.IsWebSocketRequest)
@@ -22,7 +22,7 @@ namespace Networks
                 {
                     if (webSocket != null && webSocket.State == WebSocketState.Open)
                     {
-                        ManageEstablishedConnection(webSocket);
+                        ManageEstablishedSocket(webSocket);
 
                         while (webSocket.State == WebSocketState.Open)
                         {
@@ -39,6 +39,8 @@ namespace Networks
                                     break;
                             }
                         }
+
+                        ManageDisconnectedSocket(webSocket);
                     }
                 }
             }
@@ -48,16 +50,22 @@ namespace Networks
             }
         }
 
-        public void ManageEstablishedConnection(WebSocket webSocket)
+        public void ManageEstablishedSocket(WebSocket webSocket)
         {
-            ClientSockets.Add(webSocket);
+            ClientSockets.TryAdd(webSocket, false);
+        }
+
+        public void ManageDisconnectedSocket(WebSocket webSocket)
+        {
+            bool temp;
+            ClientSockets.TryRemove(webSocket, out temp);
         }
 
         public async Task HandleRequestText(WebSocket webSocket, ArraySegment<byte> message, CancellationToken token)
         {
             var request = Encoding.UTF8.GetString(message.Array, message.Offset, message.Count);
 
-            foreach (var socket in ClientSockets)
+            foreach (var socket in ClientSockets.Keys)
             {
                 await socket.SendAsync(message, WebSocketMessageType.Text, true, token);
             }
