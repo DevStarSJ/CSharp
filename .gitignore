@@ -3,3 +3,7 @@ obj
 bin
 TestResults
 packages
+artifacts
+node_modules
+*.user
+*.lock.json

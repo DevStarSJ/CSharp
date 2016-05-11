@@ -1,26 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNet.Builder;
+﻿using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.Data.Entity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Networks;
 using WebSocket5.Models;
 using WebSocket5.Services;
-using System.Net.WebSockets;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Text;
 
 namespace WebSocket5
 {
     public class Startup
     {
-        ConcurrentBag<WebSocket> _sockets = new ConcurrentBag<WebSocket>();
+        WebSocketServer webSocketServer = new WebSocketServer();
 
         public Startup(IHostingEnvironment env)
         {
@@ -109,59 +102,7 @@ namespace WebSocket5
             // To configure external authentication please see http://go.microsoft.com/fwlink/?LinkID=532715
 
             app.UseWebSockets();
-            app.Use(async (http, next) =>
-            {
-                if (http.WebSockets.IsWebSocketRequest)
-                {
-                    var webSocket = await http.WebSockets.AcceptWebSocketAsync();
-
-                    if (webSocket != null && webSocket.State == WebSocketState.Open)
-                    {
-                        //bool existed = false;
-                        //foreach (var socket in _sockets)
-                        //{
-                        //    if (socket == webSocket)
-                        //    {
-                        //        existed = true;
-                        //        break;
-                        //    }
-                        //}
-
-                        //if (!existed)
-                        //{
-                        //    _sockets.Add(webSocket);
-                        //}
-
-                        _sockets.Add(webSocket);
-
-                        // Handle the socket here
-                        while (webSocket.State == WebSocketState.Open)
-                        {
-                            var token = CancellationToken.None;
-                            var buffer = new ArraySegment<byte>(new byte[4096]);
-
-                            var received = await webSocket.ReceiveAsync(buffer, token);
-
-                            switch (received.MessageType)
-                            {
-                                case WebSocketMessageType.Text:
-                                    var request = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
-                                    // Handle request here
-                                    //await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, token);
-                                    foreach (var socket in _sockets)
-                                    {
-                                        await socket.SendAsync(buffer, WebSocketMessageType.Text, true, token);
-                                    }
-                                    break;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    await next();
-                }
-            });
+            app.Use(webSocketServer.Start);
 
             app.UseMvc(routes =>
             {
