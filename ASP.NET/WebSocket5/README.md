@@ -34,26 +34,27 @@ app.Use(async (http, next) =>
 {
     if (http.WebSockets.IsWebSocketRequest)
     {
-        var webSocket = await http.WebSockets.AcceptWebSocketAsync();
-
-        if (webSocket != null && webSocket.State == WebSocketState.Open)
+        using (var webSocket = await http.WebSockets.AcceptWebSocketAsync())
         {
-            // Handle the socket here
-            while (webSocket.State == WebSocketState.Open)
+            if (webSocket != null && webSocket.State == WebSocketState.Open)
             {
-                var token = CancellationToken.None;
-                var buffer = new ArraySegment<byte>(new byte[4096]);
-
-                var received = await webSocket.ReceiveAsync(buffer, token);
-
-                switch (received.MessageType)
+                // Handle the socket here
+                while (webSocket.State == WebSocketState.Open)
                 {
-                    case WebSocketMessageType.Text:
-                        var request = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+                    var token = CancellationToken.None;
+                    var buffer = new ArraySegment<byte>(new byte[4096]);
 
-                        // Handle request here
-                        await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, token);
-                        break;
+                    var received = await webSocket.ReceiveAsync(buffer, token);
+
+                    switch (received.MessageType)
+                    {
+                        case WebSocketMessageType.Text:
+                            var request = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
+
+                            // Handle request here
+                            await webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, token);
+                            break;
+                    }
                 }
             }
         }
