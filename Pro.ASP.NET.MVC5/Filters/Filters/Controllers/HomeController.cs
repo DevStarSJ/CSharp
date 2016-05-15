@@ -23,5 +23,18 @@ namespace Filters.Controllers
         {
             return "This is the List action on the Home controller";
         }
+
+        [RangeException]
+        public string RangeTest(int id)
+        {
+            if (id > 100)
+            {
+                return string.Format($"The id value is : {id}");
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException("id", id, "");
+            }
+        }
     }
 }
