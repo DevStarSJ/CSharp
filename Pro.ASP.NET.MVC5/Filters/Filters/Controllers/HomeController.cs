@@ -11,7 +11,7 @@ namespace Filters.Controllers
     public class HomeController : Controller
     {
         //[CustomAuth(false)]
-        [Authorize(Users = "admin")]
+        //[Authorize(Users = "admin")]
         public string Index()
         {
             return "This is the Index Action on the Home controller";
@@ -35,6 +35,12 @@ namespace Filters.Controllers
             {
                 throw new ArgumentOutOfRangeException("id", id, "");
             }
+        }
+
+        [ProfileAction]
+        public string FilterTest()
+        {
+            return "This is the FilterTest Action";
         }
     }
 }
