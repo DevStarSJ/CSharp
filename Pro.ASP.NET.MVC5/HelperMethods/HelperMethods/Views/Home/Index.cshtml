@@ -1,0 +1,33 @@
+﻿@model string
+@{
+    Layout = null;
+}
+
+@helper ListArrayItems(string[] items)
+{
+    foreach(string str in items)
+    {
+        <b>@str</b>
+    }
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+</head>
+<body>
+    <div>
+        Here are the fruits : @ListArrayItems(ViewBag.Fruits)
+    </div>
+    <div>
+        Here are the cities : @ListArrayItems(ViewBag.Fruits)
+    </div>
+    <div>
+        Here is the message:
+        <p>@Model</p>
+    </div>
+</body>
+</html>
