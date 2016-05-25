@@ -7,3 +7,5 @@ artifacts
 node_modules
 *.user
 *.lock.json
+Pro.ASP.NET.MVC5/SportsStore/SportsStore.WebUI/SportsStore.WebUI.csproj.user
+*.user
