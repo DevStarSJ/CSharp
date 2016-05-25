@@ -1,4 +1,6 @@
 ﻿@model string
+@using HelperMethods.Infrastructure
+
 @{
     Layout = null;
 }
@@ -20,11 +22,12 @@
 </head>
 <body>
     <div>
-        Here are the fruits : @ListArrayItems(ViewBag.Fruits)
+        Here are the fruits : @Html.ListArrayItemsMethod((string[]) ViewBag.Fruits)
     </div>
     <div>
-        Here are the cities : @ListArrayItems(ViewBag.Fruits)
+        Here are the cities : @ListArrayItems(ViewBag.Cities)
     </div>
+    <br />
     <div>
         Here is the message:
         <p>@Model</p>
