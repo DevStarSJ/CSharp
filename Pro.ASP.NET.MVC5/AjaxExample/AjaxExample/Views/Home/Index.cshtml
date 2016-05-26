@@ -3,11 +3,13 @@
 @{
     ViewBag.Title = "Ajax Example : Person";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    AjaxOptions ajaxOptions = new AjaxOptions {
+    AjaxOptions ajaxOptions = new AjaxOptions
+    {
         UpdateTargetId = "tableBody",
-        Url= Url.Action("GetPeopleData"),
+        Url = Url.Action("GetPeopleData"),
         LoadingElementId = "loading",
-        LoadingElementDuration = 1000
+        LoadingElementDuration = 1000,
+        Confirm = "Do you with to request new data ?"
     };
 }
 <h2>Ajax Example : Person</h2>
@@ -30,8 +32,17 @@
 @using (Ajax.BeginForm(ajaxOptions))
 {
     <div>
-        @Html.DropDownList("selectedRole", new SelectList( new[] { "All" }.Concat(Enum.GetNames(typeof(Role)))))
+        @Html.DropDownList("selectedRole", new SelectList(new[] { "All" }.Concat(Enum.GetNames(typeof(Role)))))
         <button type="submit">Submit</button>
     </div>
 }
+
+<div>
+    @foreach (string role in Enum.GetNames(typeof(Role)))
+    {
+        <div class="ajaxLink">
+            @Ajax.ActionLink(role, "GetPeopleData", new { selectedRole = role }, new AjaxOptions { UpdateTargetId = "tableBody" })
+        </div>
+    }
+</div>
 
