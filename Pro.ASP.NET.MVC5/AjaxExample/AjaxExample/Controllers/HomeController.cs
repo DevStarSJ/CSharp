@@ -16,23 +16,34 @@ namespace AjaxExample.Controllers
             new Person { FirstName = "Anne", LastName = "Jones", Role = Role.Guest }
         };
 
-        public ActionResult Index()
+        public ActionResult Index(string selectedRole = "All")
         {
-            return View(personData);
+            return View((object)selectedRole);
         }
 
-        [HttpPost]
-        public ActionResult Index(string selectedRole)
+        //[HttpPost]
+        //public ActionResult Index(string selectedRole)
+        //{
+        //    if (selectedRole == null || selectedRole == "All")
+        //    {
+        //        return View(personData);
+        //    }
+        //    else
+        //    {
+        //        Role seleted = (Role)Enum.Parse(typeof(Role), selectedRole);
+        //        return View(personData.Where(p => p.Role == seleted));
+        //    }
+        //}
+
+        public PartialViewResult GetPeopleData(string selectedRole = "All")
         {
-            if (selectedRole == null || selectedRole == "All")
-            {
-                return View(personData);
-            }
-            else
+            IEnumerable<Person> data = personData;
+            if (selectedRole != "All")
             {
                 Role seleted = (Role)Enum.Parse(typeof(Role), selectedRole);
-                return View(personData.Where(p => p.Role == seleted));
+                data = personData.Where(p => p.Role == seleted);
             }
+            return PartialView(data);
         }
     }
 }

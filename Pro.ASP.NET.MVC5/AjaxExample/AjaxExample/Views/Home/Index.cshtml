@@ -1,5 +1,5 @@
 ﻿@using AjaxExample.Models
-@model IEnumerable<Person>
+@model string
 @{
     ViewBag.Title = "Ajax Example : Person";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -14,14 +14,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (Person p in Model)
-        {
-            <tr>
-                <td>@p.FirstName</td>
-                <td>@p.LastName</td>
-                <td>@p.Role</td>
-            </tr>
-        }
+        @Html.Action("GetPeopleData", new { selectedRole = Model })
     </tbody>
 </table>
 
