@@ -1,0 +1,77 @@
+﻿@using AjaxExample.Models
+@model string
+@{
+    ViewBag.Title = "Ajax Example : Person";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    AjaxOptions ajaxOptions = new AjaxOptions
+    {
+        UpdateTargetId = "tableBody",
+        Url = Url.Action("GetPeopleData"),
+        LoadingElementId = "loading",
+        LoadingElementDuration = 1000,
+        Confirm = "Do you with to request new data ?"
+    };
+}
+
+<script>
+    function OnBegin() {
+        alert("This is the OnBegin Callback");
+    }
+
+    function OnSuccess(data) {
+        alert("This is the OnSuccessCallback: " + data);
+    }
+
+    function OnFailuer(request, error) {
+        alert("This is the OnFailure Callback: " + error);
+    }
+
+    function OnComplete(request, status) {
+        alert("This is the OnComplete Callback: " + status);
+    }
+</script>
+
+<h2>Ajax Example : Person</h2>
+<div id="loading" class="load" style="display:none">
+    <p>Loading Data...</p>
+</div>
+<table>
+    <thead>
+        <tr>
+            <th>First</th>
+            <th>Last</th>
+            <th>Role</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+        @Html.Action("GetPeopleData", new { selectedRole = Model })
+    </tbody>
+</table>
+
+@using (Ajax.BeginForm(ajaxOptions))
+{
+    <div>
+        @Html.DropDownList("selectedRole", new SelectList(new[] { "All" }.Concat(Enum.GetNames(typeof(Role)))))
+        <button type="submit">Submit</button>
+    </div>
+}
+
+<div>
+    @foreach (string role in Enum.GetNames(typeof(Role)))
+    {
+        <div class="ajaxLink">
+            @Ajax.ActionLink(role, "Index",
+                new { selectedRole = role },
+                new AjaxOptions
+                {
+                    UpdateTargetId = "tableBody",
+                    Url = Url.Action("GetPeopleData", new { selectedRole = role }),
+                    OnBegin = "OnBegin",
+                    OnFailure = "OnFailure",
+                    OnSuccess = "OnSuccess",
+                    OnComplete = "OnComplete"
+                }
+            )
+        </div>
+    }
+</div>
